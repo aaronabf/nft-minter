@@ -1,0 +1,11 @@
+app:
+  host: 127.0.0.1
+  port: 8000
+
+image:
+  max_image_size_mb: 20
+  pixel_count: 32
+
+crypto:
+  enabled: false
+  api: https://api.devnet.solana.com/

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0"/>
+  <link rel="icon" href="{{ url('static', filename='images/favicon.ico') }}">
+  <title>NFT Minter</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans" />
+  <link rel="stylesheet" href="{{ url('static', filename='styles/main.css') }}">
+</head>
+<body>
+  <header class="header">
+    <div class="banner">
+      <img class="banner-logo" src="{{ url('static', filename='images/logo.png') }}" alt="logo">
+      <h1 class="banner-title">NFT Minter</h1>
+      <p>Make your dreams into NFTs</p>
+    </div>
+  </header>
+  <div class="wrapper">
+    <main>
+      <button class="btn btn-success" onclick="HandleBrowseClick('input-image-hidden');">Upload image</button>
+      <input style="display: none;" id="input-image-hidden" onchange="handleOnChange('input-image-hidden')" type="file" accept="image/jpeg, image/png">
+      <br>
+      <div id="status-block">
+        <p id="status">Click to upload!</p>
+      </div>
+      <br>
+      <div id="image-block">
+        <img id="image-preview" src="{{ url('static', filename='images/no-img.png') }}">
+        <img id="image-result" src="{{ url('static', filename='images/no-img.png') }}">
+      </div>
+      <script type="text/javascript">
+        function HandleBrowseClick(input_image) {
+          document.getElementById(input_image).click();
+        };
+
+        const upload = (file) => {
+          const data = new FormData();
+          const status = document.getElementById('status');
+          const image = document.getElementById('image-result');
+
+          status.innerText = 'Running...'
+          data.append('file', file);
+
+          fetch('{{ url("mint") }}', {
+            method: 'POST',
+            body: data,
+          }).then(response => {
+            if (!response.ok) {
+              status.innerText = 'Error :('
+              console.log(response);
+              throw new Error('Received ' + response.status + ' from server: ' + response.statusText);
+            }
+            return response.body;
+          })
+          .then(body => {
+            const reader = body.getReader();
+            return new ReadableStream({
+              start(controller) {
+                return pump();
+                function pump() {
+                  return reader.read().then(({ done, value }) => {
+                    if (done) {
+                      controller.close();
+                      return;
+                    } else {
+                      controller.enqueue(value);
+                      return pump();
+                    }
+                  });
+                }
+              }
+            })
+          })
+          .then(stream => new Response(stream))
+          .then(response => response.blob())
+          .then(blob => URL.createObjectURL(blob))
+          .then(url => {
+            status.innerText = 'Success!';
+            image.src = url;
+           })
+          .catch(err => console.error(err));
+        };
+
+        function handleOnChange(input_image) {
+          var input = document.getElementById(input_image);
+          document.getElementById('image-preview').src = (
+            window.URL.createObjectURL(input.files[0])
+          );
+          upload(input.files[0]);
+        };
+      </script>
+    </main>
+  </div>
+</body>
+</html>
